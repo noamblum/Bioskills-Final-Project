@@ -19,7 +19,6 @@ desired_conditions <- c(  "healthy",
                           "ibd",
                           "sclc",
                           "melanoma",
-                          "myeloma",
                           "covid",
                           "transplant"
                           )
@@ -54,11 +53,10 @@ unified.normalized$score[unified.normalized$type == "B-Cell"] <-
 unified.normalized$score <- unified.normalized$score * 100
 cond_display_names <- c(  "Healthy", 
                           "Post Sport", 
-                          "AIH",
-                          "IBD",
-                          "SCLC",
+                          "Autoimmune Hepatitis",
+                          "Inflammatory Bowel Disease",
+                          "Small Cell Lung Cancer",
                           "Melanoma",
-                          "Myeloma",
                           "COVID-19",
                           "Transplant")
 
@@ -81,6 +79,7 @@ exploratory <-
   theme_bw()+
   geom_jitter(height = 0, width = 0.25,alpha=0.5)+
   geom_boxplot(alpha=0.5,outlier.color = NA)+
+  theme(legend.position="none")+
   scale_color_manual(values = cond_cols)+
   scale_fill_manual(values = cond_cols)+
   ggtitle("Abundace of T-Cells and B-Cells in samples with various conditions")+
@@ -93,3 +92,35 @@ exploratory <-
 # Explanatory graph - compare normalized t-cell and b-cell signature of covid to
 #                     those of sclc (lung cancer) to determine if there are differences
 #                     This is meant to compare a viral lung disease to lung cancer
+
+# Create dataframe with medians
+conds.subset <- c("healthy", "sclc", "covid")
+unified.subset <- unified[unified$condition %in% conds.subset,]
+unified.subset.medians <- unified.subset %>% group_by(type, condition) %>%
+                          summarise(median=median(score))
+subset_inds <- match(conds.subset, desired_conditions)
+
+# Generate the graph
+cond_display_names.subset <- cond_display_names[subset_inds]
+
+unified.subset.medians$condition <- factor(as.character(unified.subset.medians$condition),
+                                       levels = conds.subset)
+levels(unified.subset.medians$condition) <- cond_display_names.subset
+
+cond_cols.subset = cond_cols[subset_inds]
+
+explanatory <- ggplot(unified.subset.medians, aes(x=type,y=median, color=condition, fill=condition))+
+  theme_bw()+
+  geom_bar(stat="identity", alpha=0.75)+
+  theme(legend.position="none")+
+  scale_color_manual(values = cond_cols.subset)+
+  scale_fill_manual(values = cond_cols.subset)+
+  ggtitle("Abundance of B-Cells and T-Cells compared between
+          lung cancer and a viral lung disease")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  xlab("Cell type")+
+  ylab("Median of signature score") +
+  facet_wrap(~condition, scales = "fixed")
+
+ggsave("exploratory.png", exploratory, width = 6, height = 5)
+ggsave("explanatory.png", explanatory, width = 6, height = 5)
